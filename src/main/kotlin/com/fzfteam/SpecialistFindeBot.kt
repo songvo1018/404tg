@@ -48,21 +48,13 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
 
     private val specialists : List<Specialist> = initiateMockSpecialistList()
 
-    private val availableLocations : List<String> = specialists.map { it.location }
+    private val availableLocations : Set<String> = specialists.map { it.location }.toSet()
 
     private val availableCategories : Set<String> = initiateMockUniqueSpecialistsCategories()
 
-    private val specialyToCategory : HashMap<String, List<String>> = initiateMockSpecialityToCategoryMap()
+    private val specialityToCategory : HashMap<String, List<String>> = initiateMockSpecialityToCategoryMap()
 
-    private fun initiateMockSpecialityToCategoryMap(): HashMap<String, List<String>> {
-        hashMapOf(
-            Pair("Юридические услуги", listOf("Нотариус", "Representation in court", "Other")),
-            Pair("Housing", listOf("rent", "Purchase and sale", "Other")),
-            Pair("health", listOf("Therapist", "Dentist", "Children's doctor")),
-            Pair("Services for animals", listOf("Veterinarian", "Animal walking", "Overexposure")),
-            Pair("legal services", listOf("Notary", "Representation in court", "Other")),
-        )
-    }
+
 
     private var users : HashMap<Long, User> = hashMapOf()
         get() {
@@ -76,17 +68,38 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
         return categories
     }
 
+    private fun initiateMockSpecialityToCategoryMap(): HashMap<String, List<String>> {
+        return hashMapOf(
+            Pair("Юридические услуги", listOf("Нотариус", "Representation in court", "Other")),
+            Pair("Жилье", listOf("Аренда", "Купля-продажа", "Other")),
+            Pair("Здоровье", listOf("Терапевт", "Стоматолог", "Детский врач")),
+            Pair("Услуги для животных", listOf("Ветеринар", "Выгул животных", "Передержка")),
+            Pair("Ремонт техники", listOf("Холодильники", "Мобильные телефоны и планшеты", "Прочее")),
+            Pair("Ремонт автомобилей", listOf("Шиномонтаж", "Диагностика", "Прочее")),
+            Pair("Аренда автомобиля", listOf("Аренда автомобиля")),
+        )
+    }
+
     fun initiateMockSpecialistList(): List<Specialist> {
         return listOf<Specialist>(
-            Specialist(1, "Michel", "Astana", listOf("Car", "Driver", "Transfer"), "vk.com/michaelDriver"),
-            Specialist(1, "Sholpan", "Astana", listOf("HR", "Work", "Hiring", "Hiring Agency"), "+7 700 10 10 10"),
-            Specialist(1, "Asiya", "Shimkent", listOf("Nurse", "Nanny"), "+7 700 05 04 51, asyiya@shimkent.com"),
-            Specialist(1, "George", "Astana", listOf("Car", "Driver", "Transfer"), "+7 700 00 00 00"),
-            Specialist(3, "Maria Fouler", "Bishkek", listOf("Psychological help", "Mind care", "Meditation"), "@mashaF"),
-            Specialist(3, "Anastasiya", "Bishkek", listOf("Job search", "Acting skills", "Career advice"), "@uCarrierInFirst"),
-            Specialist(3, "Sasha E.", "Bishkek", listOf("Tutor", "English language"), "@englishWithSashaE"),
-            Specialist(2, "Alima", "Erevan", listOf("Documents", "Government help", "Notary", "Lawyer"), "@alima"),
-            Specialist(2, "Alik Gohaev", "Erevan", listOf("Documents", "Notary", "Lawyer"), "yourErevanLayer.com"),
+            Specialist(1, "Михаил", "Астана", listOf("Аренда автомобиля"), "vk\\.com\\/michaelDriver"),
+            Specialist(2, "Николай", "Астана", listOf("Аренда автомобиля"), "vk\\.com\\/nikAuto"),
+            Specialist(6, "Георгий", "Астана", listOf("Детский врач"), "\\+7 700 00 00 00"),
+            Specialist(3, "Катя", "Астана", listOf("Нотариус"), "\\+7 700 10 99 33 @kate"),
+            Specialist(4, "Шолпан", "Астана", listOf("Нотариус"), "\\+7 700 10 51 10"),
+
+            Specialist(5, "Asiya", "Шимкент", listOf("Терапевт"), "\\+7 700 05 04 51, asyiya@shimkent\\.com"),
+            Specialist(5, "Мария", "Шимкент", listOf("Терапевт"), "\\+7 705 91 24 32, мария@shimkent\\.com"),
+
+            Specialist(7, "Мария Фаулер", "Бишкек", listOf("Терапевт"), "@mashaF"),
+            Specialist(8, "Anastasiya", "Бишкек", listOf("Терапевт"), "@yourHealth"),
+            Specialist(8, "Максим", "Бишкек", listOf("Аренда автомобиля"), "@carBishkek"),
+            Specialist(9, "Sasha E.", "Бишкек", listOf("Ветеринар"), "@englishWithSashaE"),
+
+            Specialist(10, "Alima", "Ереван", listOf("Нотариус"), "@alima"),
+            Specialist(11, "Alina", "Ереван", listOf("Аренда автомобиля"), "@alima"),
+            Specialist(12, "Alik Gohaev", "Ереван", listOf("Аренда"), "yourErevanHousing\\.com"),
+            Specialist(13, "Alexander", "Ереван", listOf("Купля-продажа"), "yourErevanHousing\\.com"),
         )
     }
 
@@ -101,11 +114,11 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
     data class AnswerObject (val text: String, val callback: String)
 
     data class ResponseObject (val responseText: String, val answerVariance: List<AnswerObject>, val nextQuestion: String = "") {
-        constructor(responseText: String, nexQuestion: String) : this(responseText, listOf(AnswerObject("Restart", "/start")), nexQuestion)
+        constructor(responseText: String, nexQuestion: String) : this(responseText, listOf(AnswerObject("Вернуться в начало", "/start")), nexQuestion)
     }
 
     override fun onUpdateReceived(update: Update) {
-        println(availableLocations.toSet())
+//        println(availableLocations.toSet())
         if (update.hasMessage()) {
             val message = update.message
             var user = users.getOrPut(message.from.id){ User(
@@ -124,8 +137,8 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                         user.setup()
                         ResponseObject(
                             "You chose $messageText",
-                            listOf(AnswerObject("I can help", "/give"), AnswerObject("I need Help", "/search")),
-                            "You search or give help?"
+                            listOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне нужна помощь", "/search")),
+                            "Вы можете помочь или вам нужна помощь?"
                         )
                     }
 
@@ -133,14 +146,14 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                     !messageText.contains("/") &&
                     user.userLocation.isEmpty() -> {
                         user.userLocation = messageText
-                        var nexQuestion = "Which problem you want find solve?"
+                        var nexQuestion = "Какая помощь вам требуется?"
                         val categoriesButtons = availableCategories.map { AnswerObject(it, it) }
 
-                        if (user.role == UserRoles.SPECIALIST) nexQuestion = "Which problem you can solve?"
+                        if (user.role == UserRoles.SPECIALIST) nexQuestion = "Чем вы могли бы помочь?"
                         if (user.role == UserRoles.GUEST) {
                             ResponseObject(
                                 "You say: '$messageText'",
-                                listOf(AnswerObject("I can help", "/give"), AnswerObject("I need Help", "/search")),
+                                listOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне нужна помощь", "/search")),
                                 ""
                             )
                         } else {
@@ -152,30 +165,31 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
 
                     }
 
+//                    SETTING PROBLEM
                     !messageText.contains("/") &&
                             !user.userLocation.isEmpty()  -> {
                         val problem = messageText
                         user.lastProblem = problem
                         user.propblemsList.add(problem)
-                        var textPrefixDependOnRole = "Your problem is"
+                        var textPrefixDependOnRole = "Вы ищите"
                         var callbackDependsOnRole = "/find"
                         if (user.role === UserRoles.SPECIALIST) {
-                            textPrefixDependOnRole = "You can help people with"
+                            textPrefixDependOnRole = "Вы можете помочь с"
                             callbackDependsOnRole = "/suggest"
                         }
 
                         ResponseObject(
-                            "$textPrefixDependOnRole: ${problem}, Location: ${user.userLocation}",
+                            "$textPrefixDependOnRole: ${problem}, Локация: ${user.userLocation}",
                             listOf(
-                                AnswerObject("That's right", callbackDependsOnRole),
-                                AnswerObject("No, back to start", "/start")),
+                                AnswerObject("Всё верно!", callbackDependsOnRole),
+                                AnswerObject("Нет, вернуться к началу", "/start")),
                         )
                     }
 
-                    else -> ResponseObject("Ooops, i dont understand", listOf(AnswerObject("Back to start", "/start")))
+                    else -> ResponseObject("Что-то пошло не так", listOf(AnswerObject("Вернуться к началу", "/start")))
                 }
             } else {
-                ResponseObject("I dont understand", listOf(AnswerObject("I need Help","/search")),"Please restart")
+                ResponseObject("Понимаю только текст", listOf(AnswerObject("Вернуться к началу","/search")),"Верниуться к началу")
             }
             sendNotification(chatId, responseText)
         }
@@ -189,28 +203,28 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
             }
             val responseText = if (update.callbackQuery.data.isNotEmpty()) {
                 val data = update.callbackQuery.data
-                println(data)
-                println(user)
+//                println(data)
+//                println(user)
 
                 when {
                     data == "/start" -> {
                         user.setup()
-                        var answers = mutableListOf(AnswerObject("I can help", "/give"), AnswerObject("I need Help", "/search"))
+                        var answers = mutableListOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне требуется помощь", "/search"))
                         if (user.userLocation.isNotEmpty()) {
-                            answers.add(AnswerObject("Change my location", "/changeLocation"))
+                            answers.add(AnswerObject("Изменить мою локацию", "/changeLocation"))
                         }
                         ResponseObject(
                             "You chose $data",
                             answers,
-                            "You search or give help?"
+                            "Вы можете помочь или вам нужна помощь?"
                         )
                     }
                     data == "/give" -> {
                         user.role = UserRoles.SPECIALIST
-                        var nexQuestion = "Where problems you might solve?"
+                        var nexQuestion = "В какой локации вам требуется помощь?"
                         val locationButtons = availableLocations.map { AnswerObject(it, it) }
                         if (user.userLocation.isNotEmpty()) {
-                            nexQuestion = "Which problem you might solve?"
+                            nexQuestion = "Чем вы могли бы помочь?"
                             ResponseObject("You chose $data", nexQuestion)
                         } else {
                             ResponseObject("You chose $data", locationButtons, nexQuestion)
@@ -218,11 +232,12 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                     }
                     data == "/search" -> {
                         user.role = UserRoles.SEARCHER
-                        var nexQuestion = "Where problems you want solve?"
+                        var nexQuestion = "В какой локации вам требуется помощь?"
                         val locationButtons = availableLocations.map { AnswerObject(it, it) }
                         if (user.userLocation.isNotEmpty()) {
-                            nexQuestion = "Which problem you want solve?"
-                            ResponseObject("You chose $data", nexQuestion)
+                            nexQuestion = "Чем вы могли бы помочь?"
+                            val problemsButtons = specialityToCategory.keys.map { AnswerObject(it, it)}
+                            ResponseObject("You chose $data", problemsButtons, nexQuestion)
                         } else {
                             ResponseObject("You chose $data", locationButtons, nexQuestion)
                         }
@@ -232,14 +247,14 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                     !data.contains("/") &&
                     user.userLocation.isEmpty() -> {
                         user.userLocation = data
-                        var nexQuestion = "Which problem you want find solve?"
+                        var nexQuestion = "Какая помощь вам требуется?"
                         val categoriesButtons = availableCategories.map { AnswerObject(it, it) }
 
-                        if (user.role == UserRoles.SPECIALIST) nexQuestion = "Which problem you can solve?"
+                        if (user.role == UserRoles.SPECIALIST) nexQuestion = "Чем вы могли бы помочь?"
                         if (user.role == UserRoles.GUEST) {
                             ResponseObject(
                                 "You say: '$data'",
-                                listOf(AnswerObject("I can help", "/give"), AnswerObject("I need Help", "/search")),
+                                listOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне требуется помощь", "/search")),
                                 ""
                             )
                         } else {
@@ -249,13 +264,34 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                                 nexQuestion)
                         }
                     }
+
+                    //                    SETTING PROBLEM OR SUGGEST IF SPECIALIST
+                    !data.contains("/") &&
+                            !user.userLocation.isEmpty()  -> {
+                        val problem = data
+                        user.lastProblem = problem
+                        user.propblemsList.add(problem)
+                        var textPrefixDependOnRole = "Вы ищите"
+                        var callbackDependsOnRole = "/find"
+                        if (user.role === UserRoles.SPECIALIST) {
+                            textPrefixDependOnRole = "Вы можете помочь людям с"
+                            callbackDependsOnRole = "/suggest"
+                        }
+
+                        ResponseObject(
+                            "$textPrefixDependOnRole: ${problem}, Location: ${user.userLocation}",
+                            listOf(
+                                AnswerObject("Всё верно!", callbackDependsOnRole),
+                                AnswerObject("Нет, вернуться к началу", "/start")),
+                        )
+                    }
                     data == "/changeLocation" -> {
                         var deletedLocation = user.userLocation
                         user.userLocation = ""
                         ResponseObject(
                             "You chose $data",
                             listOf(AnswerObject(deletedLocation, "previousLocation?$deletedLocation")),
-                            "Your previously location is $deletedLocation Select or type your location"
+                            "Ваша предыдущая локация это $deletedLocation \n Выберите другую локацию"
                         )
                     }
                     data.contains("previousLocation") -> {
@@ -268,43 +304,54 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                         )
                     }
                     data == "/find" -> {
+                        val specialistInLocation = specialists.filter { it.location == user.userLocation }.filter { it.categories.contains(user.lastProblem) }
+//                        TOOD: HANDLE IF NOT FOUND OR NOT SHOW EMPTY CATEGORIES IN CURRENT LOCATION
                         ResponseObject(
                             "",
-                            listOf(
-                                AnswerObject("Aleksey", "/id53"),
-                                AnswerObject("Maria", "/id32"),
-                                AnswerObject("Maks", "/id803"),
-                                AnswerObject("Morjan", "/id332"),
-                                AnswerObject("Sholpan", "/id812")
-                            ),
-                            "We found your specialists"
+                            specialistInLocation.map{AnswerObject(it.name, "/id${it.id}")},
+                            "Мы нашли тех, кто может вам помочь"
                         )
                     }
                     data == "/suggest" -> {
-                        ResponseObject("We save information about your help, thanks","Development in progress")
+                        ResponseObject("Мы сохранили информацию о вас, спасибо","Development in progress")
                     }
 
                     data.contains("/id") -> {
                         val toSearchQuery = hashMapOf(Pair("location", user.userLocation), Pair("problem", user.lastProblem))
+                        val specialistId = data.substring("/id".length).toLong()
+                        val specialist = specialists.find{ it.id == specialistId }
 
+                        if (specialist != null) {
+                            ResponseObject(
+//                            "QUERY: ${user.userLocation} and ${user.lastProblem}",
+                            "Имя: ${specialist.name} \n" +
+                                        "Локация: ${specialist.location}\n" +
+                                        "Категории: ${specialist.categories}\n" +
+                                        "Дополнительная информация: ${specialist.additionalData}\n",
+                                listOf(AnswerObject("Оставить обратную связь", "/feedback")),
+                                ""
+                            )
+                        } else {
+                            ResponseObject(
+//                            "QUERY: ${user.userLocation} and ${user.lastProblem}",
+                                "Что-то пошло не так",
+                                listOf(AnswerObject("Оставить обратную связь", "/feedback")),
+                                ""
+                            )
+                        }
 //                        TODO: GET SPECIALISTS BY QUERY
 
 
-                        ResponseObject(
-//                            "QUERY: ${user.userLocation} and ${user.lastProblem}",
-                            "QUERY: $data",
-                            listOf(AnswerObject("Feedback", "/feedback")),
-                            "Please leave your feedback"
-                        )
+
                     }
                     data == "/feedback" -> {
                         ResponseObject(
                             "You chose $data",
                             listOf(
-                                AnswerObject("I found help, thanks!", "/thanks"),
-                                AnswerObject("I not found help", "/notFound"),
-                                AnswerObject("have a bone to pick", "/claims")),
-                            "Come again"
+                                AnswerObject("Я нашел решение проблемы, спасибо!", "/thanks"),
+                                AnswerObject("Я не нашел решения", "/notFound"),
+                                AnswerObject("Оставить отзыв", "/claims")),
+                            ""
                         )
                     }
                     data == "/thanks" ||
@@ -320,10 +367,10 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                         )
                     }
 
-                    else -> ResponseObject("Its not a command", "")
+                    else -> ResponseObject("Неизвестная команда", listOf(AnswerObject("Вернуться к началу", "/start")),"Верниуться к началу")
                 }
             } else {
-                ResponseObject("I dont understand", listOf(AnswerObject("I need Help","/search")),"Please restart")
+                ResponseObject("Неизвестная команда", listOf(AnswerObject("Вернуться к началу", "/start")),"Верниуться к началу")
             }
 
             sendNotification(update.callbackQuery.from.id.toString(), responseText)
@@ -376,7 +423,7 @@ fun User.setup() {
     this.userMessagesId = mutableListOf()
     this.lastProblem = ""
     this.propblemsList = mutableListOf()
-    println(this)
+//    println(this)
 }
 
 enum class UserRoles {
