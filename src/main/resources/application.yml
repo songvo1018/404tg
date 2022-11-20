@@ -1,0 +1,5 @@
+telegram:
+  botName: fzf_team_bot
+  token: 5868831870:AAEElF1utQEXTwyDBsbm4DTHGg3WdqDht5I
+server:
+  port: 9910
