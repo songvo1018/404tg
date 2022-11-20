@@ -28,17 +28,18 @@ data class Specialist(
     val name: String,
     val location: String,
     val categories: List<String>,
-    val additionalData: Any
+    val additionalData: Any,
+    val mainCategory: String
 )
 
 @Service
-class SpecialistFinderBot: TelegramLongPollingBot() {
+class SpecialistFinderBot : TelegramLongPollingBot() {
 
     @Value("\${telegram.botName}")
-    private val botName : String = ""
+    private val botName: String = ""
 
     @Value("\${telegram.token}")
-    private val token : String = ""
+    private val token: String = ""
 
     override fun getBotToken(): String = token
 
@@ -46,86 +47,46 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
 
     private var counter: Int = 0
 
-    private val specialists : List<Specialist> = initiateMockSpecialistList()
+    private val specialists: List<Specialist> = initiateMockSpecialistList()
 
-    private val availableLocations : Set<String> = specialists.map { it.location }.toSet()
+    private val availableLocations: Set<String> = specialists.map { it.location }.toSet()
 
-    private val availableCategories : Set<String> = initiateMockUniqueSpecialistsCategories()
+    private val availableCategories: Set<String> = initiateMockUniqueSpecialistsCategories()
 
-    private val specialityToCategory : HashMap<String, List<String>> = initiateMockSpecialityToCategoryMap()
+    private val specialityToCategory: HashMap<String, List<String>> = initiateMockSpecialityToCategoryMap()
 
 
-
-    private var users : HashMap<Long, User> = hashMapOf()
+    private var users: HashMap<Long, User> = hashMapOf()
         get() {
             return field
         }
         set(value) {}
 
-    fun initiateMockUniqueSpecialistsCategories() : Set<String> {
-        val categories : Set<String> = specialists.map { it.categories }.flatMap { it }.toSet()
 
-        return categories
-    }
+    data class AnswerObject(val text: String, val callback: String)
 
-    private fun initiateMockSpecialityToCategoryMap(): HashMap<String, List<String>> {
-        return hashMapOf(
-            Pair("Юридические услуги", listOf("Нотариус", "Representation in court", "Other")),
-            Pair("Жилье", listOf("Аренда", "Купля-продажа", "Other")),
-            Pair("Здоровье", listOf("Терапевт", "Стоматолог", "Детский врач")),
-            Pair("Услуги для животных", listOf("Ветеринар", "Выгул животных", "Передержка")),
-            Pair("Ремонт техники", listOf("Холодильники", "Мобильные телефоны и планшеты", "Прочее")),
-            Pair("Ремонт автомобилей", listOf("Шиномонтаж", "Диагностика", "Прочее")),
-            Pair("Аренда автомобиля", listOf("Аренда автомобиля")),
+    data class ResponseObject(
+        val responseText: String,
+        val answerVariance: List<AnswerObject>,
+        val nextQuestion: String = ""
+    ) {
+        constructor(responseText: String, nexQuestion: String) : this(
+            responseText,
+            listOf(AnswerObject("Вернуться в начало", "/start")),
+            nexQuestion
         )
-    }
-
-    fun initiateMockSpecialistList(): List<Specialist> {
-        return listOf<Specialist>(
-            Specialist(1, "Михаил", "Астана", listOf("Аренда автомобиля"), "vk\\.com\\/michaelDriver"),
-            Specialist(2, "Николай", "Астана", listOf("Аренда автомобиля"), "vk\\.com\\/nikAuto"),
-            Specialist(6, "Георгий", "Астана", listOf("Детский врач"), "\\+7 700 00 00 00"),
-            Specialist(3, "Катя", "Астана", listOf("Нотариус"), "\\+7 700 10 99 33 @kate"),
-            Specialist(4, "Шолпан", "Астана", listOf("Нотариус"), "\\+7 700 10 51 10"),
-
-            Specialist(5, "Asiya", "Шимкент", listOf("Терапевт"), "\\+7 700 05 04 51, asyiya@shimkent\\.com"),
-            Specialist(5, "Мария", "Шимкент", listOf("Терапевт"), "\\+7 705 91 24 32, мария@shimkent\\.com"),
-
-            Specialist(7, "Мария Фаулер", "Бишкек", listOf("Терапевт"), "@mashaF"),
-            Specialist(8, "Anastasiya", "Бишкек", listOf("Терапевт"), "@yourHealth"),
-            Specialist(8, "Максим", "Бишкек", listOf("Аренда автомобиля"), "@carBishkek"),
-            Specialist(9, "Sasha E.", "Бишкек", listOf("Ветеринар"), "@englishWithSashaE"),
-
-            Specialist(10, "Alima", "Ереван", listOf("Нотариус"), "@alima"),
-            Specialist(11, "Alina", "Ереван", listOf("Аренда автомобиля"), "@alima"),
-            Specialist(12, "Alik Gohaev", "Ереван", listOf("Аренда"), "yourErevanHousing\\.com"),
-            Specialist(13, "Alexander", "Ереван", listOf("Купля-продажа"), "yourErevanHousing\\.com"),
-        )
-    }
-
-//start
-//q: you search or give help?
-//a1: search
-//a2: give
-//a1q: which problem?
-//a2q: what problems you might solve?
-
-
-    data class AnswerObject (val text: String, val callback: String)
-
-    data class ResponseObject (val responseText: String, val answerVariance: List<AnswerObject>, val nextQuestion: String = "") {
-        constructor(responseText: String, nexQuestion: String) : this(responseText, listOf(AnswerObject("Вернуться в начало", "/start")), nexQuestion)
     }
 
     override fun onUpdateReceived(update: Update) {
-//        println(availableLocations.toSet())
         if (update.hasMessage()) {
             val message = update.message
-            var user = users.getOrPut(message.from.id){ User(
-                userId = message.from.id,
-                userHistory = hashMapOf(),
-                userMessagesId = mutableListOf()
-            )}
+            var user = users.getOrPut(message.from.id) {
+                User(
+                    userId = message.from.id,
+                    userHistory = hashMapOf(),
+                    userMessagesId = mutableListOf()
+                )
+            }
 
             val chatId = message.chatId.toString()
             val responseText = if (message.hasText()) {
@@ -137,37 +98,53 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                         user.setup()
                         ResponseObject(
                             "You chose $messageText",
-                            listOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне нужна помощь", "/search")),
+                            listOf(
+                                AnswerObject("Я могу помочь", "/give"),
+                                AnswerObject("Мне требуется помощь", "/search")
+                            ),
                             "Вы можете помочь или вам нужна помощь?"
                         )
                     }
 
 //                    SETTING LOCATION IF NOT GUEST
                     !messageText.contains("/") &&
-                    user.userLocation.isEmpty() -> {
+                            user.userLocation.isEmpty() -> {
                         user.userLocation = messageText
                         var nexQuestion = "Какая помощь вам требуется?"
-                        val categoriesButtons = availableCategories.map { AnswerObject(it, it) }
+                        var categoriesButtons = availableCategories.map { AnswerObject(it, it) }
 
-                        if (user.role == UserRoles.SPECIALIST) nexQuestion = "Чем вы могли бы помочь?"
+                        if (categoriesButtons.isEmpty()) {
+                            nexQuestion = "В данной локации нет волонтеров"
+                            categoriesButtons = listOf(AnswerObject("Вернуться в начало ", "/start"))
+                        }
+                        println("${categoriesButtons.size} $user")
+
+                        if (user.role == UserRoles.SPECIALIST) {
+                            nexQuestion = "Чем вы могли бы помочь?"
+                            categoriesButtons = specialityToCategory.keys.map { AnswerObject(it, it) }
+                        }
                         if (user.role == UserRoles.GUEST) {
                             ResponseObject(
                                 "You say: '$messageText'",
-                                listOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне нужна помощь", "/search")),
+                                listOf(
+                                    AnswerObject("Я могу помочь", "/give"),
+                                    AnswerObject("Мне требуется помощь", "/search")
+                                ),
                                 ""
                             )
                         } else {
                             ResponseObject(
                                 "You say: '$messageText'",
                                 categoriesButtons,
-                                nexQuestion)
+                                nexQuestion
+                            )
                         }
 
                     }
 
 //                    SETTING PROBLEM
                     !messageText.contains("/") &&
-                            !user.userLocation.isEmpty()  -> {
+                            !user.userLocation.isEmpty() -> {
                         val problem = messageText
                         user.lastProblem = problem
                         user.propblemsList.add(problem)
@@ -181,35 +158,39 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                         ResponseObject(
                             "$textPrefixDependOnRole: ${problem}, Локация: ${user.userLocation}",
                             listOf(
-                                AnswerObject("Всё верно!", callbackDependsOnRole),
-                                AnswerObject("Нет, вернуться к началу", "/start")),
+                                AnswerObject("Всё верно\\!!", callbackDependsOnRole),
+                                AnswerObject("Нет, вернуться к началу", "/start")
+                            ),
                         )
                     }
 
                     else -> ResponseObject("Что-то пошло не так", listOf(AnswerObject("Вернуться к началу", "/start")))
                 }
             } else {
-                ResponseObject("Понимаю только текст", listOf(AnswerObject("Вернуться к началу","/search")),"Верниуться к началу")
+                ResponseObject(
+                    "Понимаю только текст",
+                    listOf(AnswerObject("Вернуться к началу", "/search")),
+                    "Верниуться к началу"
+                )
             }
             sendNotification(chatId, responseText)
-        }
-        else if(update.hasCallbackQuery()){
-            val user = users.getOrPut(update.callbackQuery.from.id){
+        } else if (update.hasCallbackQuery()) {
+            val user = users.getOrPut(update.callbackQuery.from.id) {
                 User(
                     userId = update.callbackQuery.from.id,
-                    userHistory =  hashMapOf(),
+                    userHistory = hashMapOf(),
                     userMessagesId = mutableListOf()
                 )
             }
             val responseText = if (update.callbackQuery.data.isNotEmpty()) {
                 val data = update.callbackQuery.data
-//                println(data)
-//                println(user)
-
                 when {
                     data == "/start" -> {
                         user.setup()
-                        var answers = mutableListOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне требуется помощь", "/search"))
+                        var answers = mutableListOf(
+                            AnswerObject("Я могу помочь", "/give"),
+                            AnswerObject("Мне требуется помощь", "/search")
+                        )
                         if (user.userLocation.isNotEmpty()) {
                             answers.add(AnswerObject("Изменить мою локацию", "/changeLocation"))
                         }
@@ -219,24 +200,43 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                             "Вы можете помочь или вам нужна помощь?"
                         )
                     }
+
                     data == "/give" -> {
                         user.role = UserRoles.SPECIALIST
-                        var nexQuestion = "В какой локации вам требуется помощь?"
+                        var nexQuestion = "В какой локации вы могли бы помочь? Напишите, если вашей нет в списке"
                         val locationButtons = availableLocations.map { AnswerObject(it, it) }
                         if (user.userLocation.isNotEmpty()) {
                             nexQuestion = "Чем вы могли бы помочь?"
-                            ResponseObject("You chose $data", nexQuestion)
+                            val problemsButtons = specialityToCategory.keys.map { AnswerObject(it, it) }
+                            ResponseObject("You chose $data", problemsButtons, nexQuestion)
                         } else {
                             ResponseObject("You chose $data", locationButtons, nexQuestion)
                         }
                     }
+
                     data == "/search" -> {
+                        println("search data")
                         user.role = UserRoles.SEARCHER
                         var nexQuestion = "В какой локации вам требуется помощь?"
                         val locationButtons = availableLocations.map { AnswerObject(it, it) }
                         if (user.userLocation.isNotEmpty()) {
-                            nexQuestion = "Чем вы могли бы помочь?"
-                            val problemsButtons = specialityToCategory.keys.map { AnswerObject(it, it)}
+                            nexQuestion = "Какая помощь вам требуется?"
+                            val specialitiesInUserLocationSet =
+                                specialists.filter { it.location == user.userLocation }.flatMap { it.categories }
+                            val categoriesToShow: MutableSet<String> = mutableSetOf()
+                            for (item in specialitiesInUserLocationSet) {
+                                for (list in specialityToCategory) {
+                                    if (list.value.contains(item)) {
+                                        categoriesToShow.add(list.key)
+                                    }
+                                }
+                            }
+
+                            var problemsButtons = categoriesToShow.map { AnswerObject(it, it) }
+                            if (problemsButtons.isEmpty()) {
+                                nexQuestion = "В вашей локации не найдено волонтеров"
+                                problemsButtons = listOf(AnswerObject("Вернуться в начало", "/start"))
+                            }
                             ResponseObject("You chose $data", problemsButtons, nexQuestion)
                         } else {
                             ResponseObject("You chose $data", locationButtons, nexQuestion)
@@ -245,29 +245,42 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                     }
                     //                    SETTING LOCATION IF NOT GUEST
                     !data.contains("/") &&
-                    user.userLocation.isEmpty() -> {
+                            user.userLocation.isEmpty() -> {
                         user.userLocation = data
                         var nexQuestion = "Какая помощь вам требуется?"
-                        val categoriesButtons = availableCategories.map { AnswerObject(it, it) }
-
                         if (user.role == UserRoles.SPECIALIST) nexQuestion = "Чем вы могли бы помочь?"
                         if (user.role == UserRoles.GUEST) {
                             ResponseObject(
                                 "You say: '$data'",
-                                listOf(AnswerObject("Я могу помочь", "/give"), AnswerObject("Мне требуется помощь", "/search")),
+                                listOf(
+                                    AnswerObject("Я могу помочь", "/give"),
+                                    AnswerObject("Мне требуется помощь", "/search")
+                                ),
                                 ""
                             )
                         } else {
+                            val specialitiesInUserLocationSet =
+                                specialists.filter { it.location == user.userLocation }.flatMap { it.categories }
+                            val categoriesToShow: MutableSet<String> = mutableSetOf()
+                            for (item in specialitiesInUserLocationSet) {
+                                for (list in specialityToCategory) {
+                                    if (list.value.contains(item)) {
+                                        categoriesToShow.add(list.key)
+                                    }
+                                }
+                            }
+                            val problemsButtons = categoriesToShow.map { AnswerObject(it, it) }
                             ResponseObject(
                                 "You say: '$data'",
-                                categoriesButtons,
-                                nexQuestion)
+                                problemsButtons,
+                                nexQuestion
+                            )
                         }
                     }
 
                     //                    SETTING PROBLEM OR SUGGEST IF SPECIALIST
                     !data.contains("/") &&
-                            !user.userLocation.isEmpty()  -> {
+                            !user.userLocation.isEmpty() -> {
                         val problem = data
                         user.lastProblem = problem
                         user.propblemsList.add(problem)
@@ -281,50 +294,64 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                         ResponseObject(
                             "$textPrefixDependOnRole: ${problem}, Location: ${user.userLocation}",
                             listOf(
-                                AnswerObject("Всё верно!", callbackDependsOnRole),
-                                AnswerObject("Нет, вернуться к началу", "/start")),
+                                AnswerObject("Всё верно\\!", callbackDependsOnRole),
+                                AnswerObject("Нет, вернуться к началу", "/start")
+                            ),
                         )
                     }
+
                     data == "/changeLocation" -> {
                         var deletedLocation = user.userLocation
                         user.userLocation = ""
                         ResponseObject(
                             "You chose $data",
-                            listOf(AnswerObject(deletedLocation, "previousLocation?$deletedLocation")),
+                            availableLocations.map { AnswerObject(it, it) },
                             "Ваша предыдущая локация это $deletedLocation \n Выберите другую локацию"
                         )
                     }
+
                     data.contains("previousLocation") -> {
                         user.userLocation = data.substring("previousLocation?".length)
                         ResponseObject(
                             "You chose ${user.userLocation}",
-//                            listOf(AnswerObject(deletedLocation, "previousLocation=$deletedLocation")),
-//                            "Your previously location is $deletedLocation Select or type your location"
-                        ""
+                            ""
                         )
                     }
+
                     data == "/find" -> {
-                        val specialistInLocation = specialists.filter { it.location == user.userLocation }.filter { it.categories.contains(user.lastProblem) }
-//                        TOOD: HANDLE IF NOT FOUND OR NOT SHOW EMPTY CATEGORIES IN CURRENT LOCATION
-                        ResponseObject(
-                            "",
-                            specialistInLocation.map{AnswerObject(it.name, "/id${it.id}")},
-                            "Мы нашли тех, кто может вам помочь"
-                        )
+                        println(user.lastProblem)
+                        val specialistInLocation = specialists.filter { it.location == user.userLocation }
+                            .filter { it.mainCategory.equals(user.lastProblem) }
+                        if (specialistInLocation.isEmpty()) {
+                            ResponseObject(
+                                "",
+                                listOf(AnswerObject("Вернуться к началу", "/start")),
+                                "Мы не нашли тех, кто может вам помочь в данной локации"
+                            )
+                        } else {
+                            ResponseObject(
+                                "",
+                                specialistInLocation.map { AnswerObject(it.name, "/id${it.id}") },
+                                "Мы нашли тех, кто может вам помочь"
+                            )
+                        }
                     }
+
                     data == "/suggest" -> {
-                        ResponseObject("Мы сохранили информацию о вас, спасибо","Development in progress")
+                        ResponseObject("Мы сохранили информацию о вас, спасибо", "Development in progress")
                     }
 
                     data.contains("/id") -> {
-                        val toSearchQuery = hashMapOf(Pair("location", user.userLocation), Pair("problem", user.lastProblem))
+                        val toSearchQuery = hashMapOf(
+                            Pair("location", user.userLocation),
+                            Pair("problem", user.lastProblem)
+                        ) // if use db or store
                         val specialistId = data.substring("/id".length).toLong()
-                        val specialist = specialists.find{ it.id == specialistId }
+                        val specialist = specialists.find { it.id == specialistId }
 
                         if (specialist != null) {
                             ResponseObject(
-//                            "QUERY: ${user.userLocation} and ${user.lastProblem}",
-                            "Имя: ${specialist.name} \n" +
+                                "Имя: ${specialist.name} \n" +
                                         "Локация: ${specialist.location}\n" +
                                         "Категории: ${specialist.categories}\n" +
                                         "Дополнительная информация: ${specialist.additionalData}\n",
@@ -333,44 +360,46 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
                             )
                         } else {
                             ResponseObject(
-//                            "QUERY: ${user.userLocation} and ${user.lastProblem}",
                                 "Что-то пошло не так",
                                 listOf(AnswerObject("Оставить обратную связь", "/feedback")),
                                 ""
                             )
                         }
-//                        TODO: GET SPECIALISTS BY QUERY
-
-
-
                     }
+
                     data == "/feedback" -> {
                         ResponseObject(
                             "You chose $data",
                             listOf(
-                                AnswerObject("Я нашел решение проблемы, спасибо!", "/thanks"),
+                                AnswerObject("Я нашел решение проблемы, спасибо\\!", "/thanks"),
                                 AnswerObject("Я не нашел решения", "/notFound"),
-                                AnswerObject("Оставить отзыв", "/claims")),
+                                AnswerObject("Оставить отзыв", "/claims")
+                            ),
                             ""
                         )
                     }
+
                     data == "/thanks" ||
-                    data == "/claims" ||
-                    data == "/notFound" -> {
+                            data == "/claims" ||
+                            data == "/notFound" -> {
                         ResponseObject(
                             "You chose $data",
-//                            listOf(
-//                                AnswerObject("I found help, thanks!", "/thanks"),
-//                                AnswerObject("I not found help", "/not_found"),
-//                                AnswerObject("have a bone to pick", "/claims")),
                             "Development in progress"
                         )
                     }
 
-                    else -> ResponseObject("Неизвестная команда", listOf(AnswerObject("Вернуться к началу", "/start")),"Верниуться к началу")
+                    else -> ResponseObject(
+                        "Неизвестная команда",
+                        listOf(AnswerObject("Вернуться к началу", "/start")),
+                        "Верниуться к началу"
+                    )
                 }
             } else {
-                ResponseObject("Неизвестная команда", listOf(AnswerObject("Вернуться к началу", "/start")),"Верниуться к началу")
+                ResponseObject(
+                    "Неизвестная команда",
+                    listOf(AnswerObject("Вернуться к началу", "/start")),
+                    "Верниуться к началу"
+                )
             }
 
             sendNotification(update.callbackQuery.from.id.toString(), responseText)
@@ -379,11 +408,11 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
     }
 
     private fun sendNotification(chatId: String, responseObject: ResponseObject) {
-        var finalMessage = responseObject.responseText + " \n"+ responseObject.nextQuestion
+        var finalMessage = responseObject.responseText + " \n" + responseObject.nextQuestion
         val responseMessage = SendMessage(chatId, finalMessage)
         responseMessage.enableMarkdownV2(true)
         if (responseObject.answerVariance.isNotEmpty()) {
-            val buttons  = responseObject.answerVariance.map {answer ->
+            val buttons = responseObject.answerVariance.map { answer ->
                 val button = InlineKeyboardButton()
                 button.text = answer.text
                 button.callbackData = answer.callback
@@ -400,7 +429,7 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
         val markup = ReplyKeyboardMarkup()
         markup.keyboard = allButtons.map { rowButtons ->
             val row = KeyboardRow()
-            rowButtons.forEach{rowButton -> row.add(rowButton) }
+            rowButtons.forEach { rowButton -> row.add(rowButton) }
             row
         }
         return markup
@@ -409,11 +438,77 @@ class SpecialistFinderBot: TelegramLongPollingBot() {
     fun getInlineKeyBoardMessage(allButtons: List<List<InlineKeyboardButton>>): InlineKeyboardMarkup {
         val inlineKeyboardMarkup = InlineKeyboardMarkup()
         inlineKeyboardMarkup.keyboard = allButtons.map { rowButtons ->
-            val row : MutableList<InlineKeyboardButton> = ArrayList()
+            val row: MutableList<InlineKeyboardButton> = ArrayList()
             rowButtons.forEach { rowButton -> row.add(rowButton) }
             row
         }
         return inlineKeyboardMarkup
+    }
+
+
+    fun initiateMockUniqueSpecialistsCategories(): Set<String> {
+        return specialists.map { it.categories }.flatMap { it }.toSet()
+    }
+
+    private fun initiateMockSpecialityToCategoryMap(): HashMap<String, List<String>> {
+        return hashMapOf(
+            Pair("Юридические услуги", listOf("Нотариус", "Representation in court", "Other")),
+            Pair("Жилье", listOf("Аренда", "Купля\\-продажа", "Other")),
+            Pair("Здоровье", listOf("Терапевт", "Стоматолог", "Детский врач")),
+            Pair("Услуги для животных", listOf("Ветеринар", "Выгул животных", "Передержка")),
+            Pair("Ремонт техники", listOf("Холодильники", "Мобильные телефоны и планшеты", "Прочее")),
+            Pair("Ремонт автомобилей", listOf("Шиномонтаж", "Диагностика", "Прочее")),
+            Pair("Аренда автомобиля", listOf("Аренда автомобиля")),
+        )
+    }
+
+    fun initiateMockSpecialistList(): List<Specialist> {
+        return listOf<Specialist>(
+            Specialist(
+                1,
+                "Михаил",
+                "Астана",
+                listOf("Аренда автомобиля"),
+                "vk\\.com\\/michaelDriver",
+                "Аренда автомобиля"
+            ),
+            Specialist(2, "Николай", "Астана", listOf("Аренда автомобиля"), "vk\\.com\\/nikAuto", "Аренда автомобиля"),
+            Specialist(3, "Георгий", "Астана", listOf("Детский врач"), "\\+7 700 00 00 00", "Здоровье"),
+            Specialist(4, "Катя", "Астана", listOf("Нотариус"), "\\+7 700 10 99 33 @kate", "Юридические услуги"),
+            Specialist(5, "Шолпан", "Астана", listOf("Нотариус"), "\\+7 700 10 51 10", "Юридические услуги"),
+
+            Specialist(
+                6,
+                "Asiya",
+                "Шимкент",
+                listOf("Терапевт"),
+                "\\+7 700 05 04 51, asyiya@shimkent\\.com",
+                "Здоровье"
+            ),
+            Specialist(
+                7,
+                "Мария",
+                "Шимкент",
+                listOf("Терапевт"),
+                "\\+7 705 91 24 32, мария@shimkent\\.com",
+                "Здоровье"
+            ),
+
+            Specialist(8, "Мария Фаулер", "Бишкек", listOf("Терапевт"), "@mashaF", "Здоровье"),
+            Specialist(9, "Anastasiya", "Бишкек", listOf("Терапевт"), "@yourHealth", "Здоровье"),
+            Specialist(10, "Максим", "Бишкек", listOf("Аренда автомобиля"), "@carBishkek", "Аренда автомобиля"),
+            Specialist(11, "Sasha E.", "Бишкек", listOf("Ветеринар"), "@englishWithSashaE", "Услуги для животных"),
+
+            Specialist(12, "Alima", "Ереван", listOf("Нотариус"), "@alima", "Юридические услуги"),
+            Specialist(13, "Alina", "Ереван", listOf("Аренда автомобиля"), "@alima", "Аренда автомобиля"),
+            Specialist(14, "Alik Gohaev", "Ереван", listOf("Аренда"), "yourErevanHousing\\.com", "Жилье"),
+            Specialist(15, "Alexander", "Ереван", listOf("Купля-продажа"), "yourErevanHousing\\.com", "Жилье"),
+
+            Specialist(16, "Ксения", "Павлодар", listOf("Нотариус"), "@ksen", "Юридические услуги"),
+            Specialist(17, "Андрей", "Павлодар", listOf("Аренда автомобиля"), "@amdryAuto", "Аренда автомобиля"),
+            Specialist(18, "Андрей", "Павлодар", listOf("Аренда автомобиля"), "@amdryAuto", "Аренда автомобиля"),
+            Specialist(19, "Василий", "Павлодар", listOf("Аренда"), "vasyaRent\\.com", "Жилье"),
+        )
     }
 }
 
